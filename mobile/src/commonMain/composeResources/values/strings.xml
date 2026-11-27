@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Русский словарь приложения — язык по умолчанию; ключи и тексты совпадают с кабинетом (`cabinet/src/i18n/ru.ts`). -->
+<resources>
+    <string name="app_loading">Загрузка…</string>
+    <string name="app_retry">Повторить</string>
+    <string name="app_back">Назад</string>
+    <string name="error_offline">Нет связи с сервером</string>
+
+    <string name="nav_home">Главная</string>
+    <string name="nav_schedule">Расписание</string>
+    <string name="nav_chat">Чат</string>
+    <string name="nav_more">Ещё</string>
+    <string name="chat_soon">Переписка с организацией скоро появится в приложении</string>
+
+    <string name="signIn_phoneTitle">Вход</string>
+    <string name="signIn_phoneHint">Введите номер телефона, который вы сообщили клубу</string>
+    <string name="signIn_phoneLabel">Номер телефона</string>
+    <string name="signIn_getCode">Получить код</string>
+    <string name="signIn_codeTitle">Введите код</string>
+    <string name="signIn_codeSent">Код отправлен в Telegram или по SMS на номер %1$s</string>
+    <string name="signIn_codeSentSms">Код отправлен по SMS на номер %1$s</string>
+    <string name="signIn_codeLabel">Код из сообщения</string>
+    <string name="signIn_login">Войти</string>
+    <string name="signIn_retryIn">Новый код можно запросить через %1$s</string>
+    <string name="signIn_resend">Отправить ещё раз</string>
+    <string name="signIn_viaSms">Отправить по SMS</string>
+    <string name="signIn_changePhone">Изменить номер</string>
+    <string name="signIn_termsTitle">Условия использования</string>
+    <string name="signIn_termsText">Чтобы войти, примите условия использования и политику обработки персональных данных.</string>
+    <string name="signIn_termsAccept">Принимаю условия и вхожу</string>
+
+    <string name="invitations_title">Вас пригласили</string>
+    <string name="invitations_hint">Ваш номер указан у клиентов этих организаций. Подключитесь — и увидите их данные. Не узнаёте организацию? Нажмите «Это не я», и мы сообщим администратору.</string>
+    <string name="invitations_invitedAt">Приглашение от %1$s</string>
+    <plurals name="invitations_clients">
+        <item quantity="one">%1$d клиент с вашим номером</item>
+        <item quantity="few">%1$d клиента с вашим номером</item>
+        <item quantity="many">%1$d клиентов с вашим номером</item>
+        <item quantity="other">%1$d клиента с вашим номером</item>
+    </plurals>
+    <string name="invitations_connect">Подключить</string>
+    <string name="invitations_notMe">Это не я</string>
+
+    <string name="profiles_empty">Профилей пока нет — спросите у администратора</string>
+    <string name="profiles_switch">Сменить профиль</string>
+    <string name="profiles_title">Чьи данные показать</string>
+    <string name="profiles_newInvitations">Новые приглашения: %1$d</string>
+    <string name="profiles_isolation">Каждая организация видит только своих клиентов.</string>
+
+    <string name="home_greeting">Здравствуйте!</string>
+    <string name="home_cabinetOf">Это кабинет клиента %1$s</string>
+
+    <string name="balance_title">Баланс</string>
+    <string name="balance_history">История баланса</string>
+    <string name="balance_empty">Движений по балансу пока нет</string>
+    <string name="balance_unpaid">Неоплаченных занятий: %1$d</string>
+    <string name="balance_unpaidHint">Чтобы оплатить, обратитесь к администратору</string>
+    <string name="balance_kind_sale">Покупка</string>
+    <string name="balance_kind_saleReturn">Возврат покупки</string>
+    <string name="balance_kind_payment">Оплата</string>
+    <string name="balance_kind_payout">Выплата</string>
+    <string name="balance_kind_credit">Начисление</string>
+    <string name="balance_kind_debit">Списание</string>
+    <string name="balance_kind_income">Поступление</string>
+    <string name="balance_kind_expense">Расход</string>
+    <string name="balance_kind_transfer">Перевод</string>
+    <string name="balance_kind_opening">Начальный остаток</string>
+    <string name="balance_kind_reversal">Отмена операции</string>
+
+    <string name="schedule_next">Ближайшее занятие</string>
+    <string name="schedule_noNext">Ближайших занятий нет</string>
+    <string name="schedule_previous">Предыдущая неделя</string>
+    <string name="schedule_following">Следующая неделя</string>
+    <string name="schedule_week">Неделя с %1$s</string>
+    <string name="schedule_empty">На этой неделе занятий нет</string>
+    <string name="schedule_movedFrom">Перенесено с %1$s</string>
+    <string name="schedule_cancelled">Отменено</string>
+    <string name="schedule_completed">Проведено</string>
+    <string name="schedule_notified">Вы предупредили, что не придёте</string>
+    <string name="schedule_notify">Не придём</string>
+    <string name="schedule_cancelNotice">Отменить предупреждение</string>
+
+    <string name="visits_title">Посещения</string>
+    <string name="visits_month">Посещения в этом месяце</string>
+    <plurals name="visits_count">
+        <item quantity="one">%1$d посещение</item>
+        <item quantity="few">%1$d посещения</item>
+        <item quantity="many">%1$d посещений</item>
+        <item quantity="other">%1$d посещения</item>
+    </plurals>
+    <string name="visits_previous">Предыдущий месяц</string>
+    <string name="visits_following">Следующий месяц</string>
+    <string name="visits_monthOf">Месяц с %1$s</string>
+    <string name="visits_empty">В этом месяце проведённых занятий нет</string>
+    <string name="visits_present">Был</string>
+    <string name="visits_absent">Не был</string>
+
+    <string name="memberships_title">Абонементы</string>
+    <string name="memberships_current">Абонемент</string>
+    <string name="memberships_all">Все абонементы</string>
+    <string name="memberships_none">Действующих абонементов нет</string>
+    <string name="memberships_unlimited">Безлимит</string>
+    <string name="memberships_left">Осталось %1$d из %2$d</string>
+    <string name="memberships_until">до %1$s</string>
+    <string name="memberships_endingSoon">Заканчивается</string>
+    <string name="memberships_frozen">Заморозка с %1$s по %2$s</string>
+    <string name="memberships_startsOn">Начнёт действовать %1$s</string>
+    <string name="memberships_startsOnVisit">Начнёт действовать с первого посещения</string>
+    <string name="memberships_closedOn">Закрыт %1$s</string>
+    <string name="memberships_revoked">Отозван</string>
+    <string name="memberships_ended">Закончился</string>
+    <string name="memberships_debits">Списания: %1$d</string>
+    <string name="memberships_noDebits">Списаний пока нет</string>
+
+    <string name="account_sessions">Устройства</string>
+    <string name="account_unknownDevice">Неизвестное устройство</string>
+    <string name="account_currentSession">Это устройство</string>
+    <string name="account_lastSeen">Последняя активность %1$s</string>
+    <string name="account_terminate">Завершить</string>
+    <string name="account_logout">Выйти</string>
+    <string name="account_delete">Удалить аккаунт</string>
+    <string name="account_deleteWarning">Вы выйдете на всех устройствах, а клубы перестанут показывать вам данные клиентов. Данные в клубах сохранятся. Чтобы вернуться, клуб должен пригласить вас снова.</string>
+    <string name="account_deleteConfirm">Удалить навсегда</string>
+    <string name="account_deleteCancel">Отмена</string>
+    <string name="account_terms">Условия использования</string>
+    <string name="account_privacy">Политика обработки персональных данных</string>
+</resources>

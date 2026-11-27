@@ -22,3 +22,7 @@ ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_e
 
 [web/**]
 indent_size = 2
+
+# Сгенерированный код (ресурсы Compose Multiplatform в `build/generated`) ktlint не проверяет.
+[**/build/generated/**.kt]
+ktlint_standard = disabled

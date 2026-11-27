@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Английский словарь приложения; ключи — как в русском `values/strings.xml`. -->
+<resources>
+    <string name="app_loading">Loading…</string>
+    <string name="app_retry">Retry</string>
+    <string name="app_back">Back</string>
+    <string name="error_offline">No connection to the server</string>
+
+    <string name="nav_home">Home</string>
+    <string name="nav_schedule">Schedule</string>
+    <string name="nav_chat">Chat</string>
+    <string name="nav_more">More</string>
+    <string name="chat_soon">Messaging with the organization is coming to the app soon</string>
+
+    <string name="signIn_phoneTitle">Sign in</string>
+    <string name="signIn_phoneHint">Enter the phone number you gave to the club</string>
+    <string name="signIn_phoneLabel">Phone number</string>
+    <string name="signIn_getCode">Get code</string>
+    <string name="signIn_codeTitle">Enter the code</string>
+    <string name="signIn_codeSent">The code was sent via Telegram or SMS to %1$s</string>
+    <string name="signIn_codeSentSms">The code was sent by SMS to %1$s</string>
+    <string name="signIn_codeLabel">Code from the message</string>
+    <string name="signIn_login">Sign in</string>
+    <string name="signIn_retryIn">You can request a new code in %1$s</string>
+    <string name="signIn_resend">Send again</string>
+    <string name="signIn_viaSms">Send by SMS</string>
+    <string name="signIn_changePhone">Change number</string>
+    <string name="signIn_termsTitle">Terms of use</string>
+    <string name="signIn_termsText">To sign in, accept the terms of use and the personal data policy.</string>
+    <string name="signIn_termsAccept">Accept and sign in</string>
+
+    <string name="invitations_title">You have been invited</string>
+    <string name="invitations_hint">Your number is listed for clients of these organizations. Connect to see their data. Don\'t recognize the organization? Tap “Not me” and we will let the administrator know.</string>
+    <string name="invitations_invitedAt">Invited on %1$s</string>
+    <plurals name="invitations_clients">
+        <item quantity="one">%1$d client with your number</item>
+        <item quantity="other">%1$d clients with your number</item>
+    </plurals>
+    <string name="invitations_connect">Connect</string>
+    <string name="invitations_notMe">Not me</string>
+
+    <string name="profiles_empty">No profiles yet — ask the administrator</string>
+    <string name="profiles_switch">Switch profile</string>
+    <string name="profiles_title">Whose data to show</string>
+    <string name="profiles_newInvitations">New invitations: %1$d</string>
+    <string name="profiles_isolation">Each organization sees only its own clients.</string>
+
+    <string name="home_greeting">Hello!</string>
+    <string name="home_cabinetOf">This is the account of %1$s</string>
+
+    <string name="balance_title">Balance</string>
+    <string name="balance_history">Balance history</string>
+    <string name="balance_empty">No balance movements yet</string>
+    <string name="balance_unpaid">Unpaid sessions: %1$d</string>
+    <string name="balance_unpaidHint">To pay, contact the administrator</string>
+    <string name="balance_kind_sale">Purchase</string>
+    <string name="balance_kind_saleReturn">Purchase return</string>
+    <string name="balance_kind_payment">Payment</string>
+    <string name="balance_kind_payout">Payout</string>
+    <string name="balance_kind_credit">Credit</string>
+    <string name="balance_kind_debit">Debit</string>
+    <string name="balance_kind_income">Income</string>
+    <string name="balance_kind_expense">Expense</string>
+    <string name="balance_kind_transfer">Transfer</string>
+    <string name="balance_kind_opening">Opening balance</string>
+    <string name="balance_kind_reversal">Reversal</string>
+
+    <string name="schedule_next">Next session</string>
+    <string name="schedule_noNext">No upcoming sessions</string>
+    <string name="schedule_previous">Previous week</string>
+    <string name="schedule_following">Next week</string>
+    <string name="schedule_week">Week of %1$s</string>
+    <string name="schedule_empty">No sessions this week</string>
+    <string name="schedule_movedFrom">Moved from %1$s</string>
+    <string name="schedule_cancelled">Cancelled</string>
+    <string name="schedule_completed">Completed</string>
+    <string name="schedule_notified">You said you won\'t come</string>
+    <string name="schedule_notify">We won\'t come</string>
+    <string name="schedule_cancelNotice">Cancel notice</string>
+
+    <string name="visits_title">Visits</string>
+    <string name="visits_month">Visits this month</string>
+    <plurals name="visits_count">
+        <item quantity="one">%1$d visit</item>
+        <item quantity="other">%1$d visits</item>
+    </plurals>
+    <string name="visits_previous">Previous month</string>
+    <string name="visits_following">Next month</string>
+    <string name="visits_monthOf">Month of %1$s</string>
+    <string name="visits_empty">No completed sessions this month</string>
+    <string name="visits_present">Present</string>
+    <string name="visits_absent">Absent</string>
+
+    <string name="memberships_title">Memberships</string>
+    <string name="memberships_current">Membership</string>
+    <string name="memberships_all">All memberships</string>
+    <string name="memberships_none">No active memberships</string>
+    <string name="memberships_unlimited">Unlimited</string>
+    <string name="memberships_left">%1$d of %2$d left</string>
+    <string name="memberships_until">until %1$s</string>
+    <string name="memberships_endingSoon">Ending soon</string>
+    <string name="memberships_frozen">Frozen from %1$s to %2$s</string>
+    <string name="memberships_startsOn">Starts on %1$s</string>
+    <string name="memberships_startsOnVisit">Starts on the first visit</string>
+    <string name="memberships_closedOn">Closed on %1$s</string>
+    <string name="memberships_revoked">Revoked</string>
+    <string name="memberships_ended">Ended</string>
+    <string name="memberships_debits">Debits: %1$d</string>
+    <string name="memberships_noDebits">No debits yet</string>
+
+    <string name="account_sessions">Devices</string>
+    <string name="account_unknownDevice">Unknown device</string>
+    <string name="account_currentSession">This device</string>
+    <string name="account_lastSeen">Last active %1$s</string>
+    <string name="account_terminate">End</string>
+    <string name="account_logout">Sign out</string>
+    <string name="account_delete">Delete account</string>
+    <string name="account_deleteWarning">You will be signed out on all devices and clubs will stop showing you client data. The data stays with the clubs. To come back, a club must invite you again.</string>
+    <string name="account_deleteConfirm">Delete forever</string>
+    <string name="account_deleteCancel">Cancel</string>
+    <string name="account_terms">Terms of use</string>
+    <string name="account_privacy">Personal data policy</string>
+</resources>

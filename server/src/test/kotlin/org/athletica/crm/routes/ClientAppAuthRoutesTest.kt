@@ -16,6 +16,8 @@ import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.api.appJson
+import org.athletica.crm.api.schemas.clientapp.ClientAppTokensResponse
 import org.athletica.crm.clientapp.ClientAppFixture
 import org.athletica.crm.configureServer
 import org.athletica.crm.core.auth.AuthenticatedUser
@@ -219,6 +221,64 @@ class ClientAppAuthRoutesTest {
                 assertEquals(HttpStatusCode.OK, response.status)
                 assertEquals("", response.cookie(ClientAppJwtConfig.COOKIE_ACCESS_TOKEN))
                 assertEquals(HttpStatusCode.Unauthorized, refresh(tokens.refresh).status)
+            }
+        }
+
+    /** Токены мобильного приложения из тела ответа [this]; cookie такой ответ не ставит. */
+    private suspend fun HttpResponse.bodyTokens(): Tokens {
+        assertEquals(HttpStatusCode.OK, status, bodyAsText())
+        assertTrue(headers.getAll(HttpHeaders.SetCookie).isNullOrEmpty())
+        val tokens = appJson.decodeFromString<ClientAppTokensResponse>(bodyAsText())
+        return Tokens(tokens.accessToken, tokens.refreshToken)
+    }
+
+    /** Вход мобильного приложения номером [PHONE] с `User-Agent` Android. */
+    private suspend fun ApplicationTestBuilder.mobileLogin(): Tokens {
+        assertEquals(HttpStatusCode.OK, post("auth/request-code", """{"phone":"$PHONE"}""").status)
+        orThrow { TestPostgres.db.sql("UPDATE client_app_codes SET code_hash = encode(sha256(convert_to(id::text || '$CODE', 'UTF8')), 'hex')").execute() }
+        return client
+            .post("/api/client-app/auth/mobile/login") {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.UserAgent, "Athletica (Android 14)")
+                setBody("""{"phone":"$PHONE","code":"$CODE","acceptedTermsVersion":"${di.clientAppConfig.termsVersion}"}""")
+            }.bodyTokens()
+    }
+
+    /** Обновление мобильного сеанса по refresh токену [refresh] в теле. */
+    private suspend fun ApplicationTestBuilder.mobileRefresh(refresh: String): HttpResponse = post("auth/mobile/refresh", """{"refreshToken":"$refresh"}""")
+
+    /** GET клиентского маршрута [path] с заголовком `Authorization: Bearer` [access]. */
+    private suspend fun ApplicationTestBuilder.bearerGet(path: String, access: String): HttpResponse = client.get("/api/client-app/$path") { header(HttpHeaders.Authorization, "Bearer $access") }
+
+    @Test
+    fun `мобильное приложение получает токены в теле и ходит с Bearer`() =
+        runTest {
+            testApplication {
+                application { context(di) { configureServer() } }
+                val tokens = mobileLogin()
+
+                val sessions = bearerGet("sessions", tokens.access)
+                assertEquals(HttpStatusCode.OK, sessions.status)
+                assertTrue(sessions.bodyAsText().contains(""""name":"Android""""), sessions.bodyAsText())
+                val next = mobileRefresh(tokens.refresh).bodyTokens()
+                assertEquals(HttpStatusCode.OK, bearerGet("sessions", next.access).status)
+            }
+        }
+
+    @Test
+    fun `мобильный refresh отклоняется после выхода и не принимает access и токен CRM`() =
+        runTest {
+            testApplication {
+                application { context(di) { configureServer() } }
+                val tokens = mobileLogin()
+
+                assertEquals(HttpStatusCode.Unauthorized, mobileRefresh(tokens.access).status)
+                assertEquals(HttpStatusCode.Unauthorized, mobileRefresh(crmToken()).status)
+                assertEquals(HttpStatusCode.Unauthorized, bearerGet("sessions", crmToken()).status)
+                assertEquals(HttpStatusCode.Unauthorized, bearerGet("sessions", "a b").status)
+                assertEquals(HttpStatusCode.OK, client.post("/api/client-app/auth/logout") { header(HttpHeaders.Authorization, "Bearer ${tokens.access}") }.status)
+                assertEquals(HttpStatusCode.Unauthorized, mobileRefresh(tokens.refresh).status)
+                assertEquals(HttpStatusCode.Unauthorized, bearerGet("sessions", tokens.access).status)
             }
         }
 

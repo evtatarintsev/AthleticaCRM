@@ -670,6 +670,70 @@ class DbClientsTest {
             assertEquals(Gender.FEMALE, client2.gender)
         }
 
+    @Test
+    fun `правка профиля из старого снимка сохраняет документ, прикреплённый после загрузки`() =
+        runTest {
+            val id = ClientId.new()
+            val uploadId = insertUpload()
+            val stale =
+                orThrow {
+                    TestPostgres.db.transaction { context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) } }
+                }
+            orThrow {
+                TestPostgres.db.transaction { context(ctx) { clients.activeById(id).attachDoc(clientDoc(uploadId, "Договор")).save() } }
+            }
+
+            orThrow {
+                TestPostgres.db.transaction { context(ctx) { stale.withNew(testName("Новое имя"), null, null, Gender.MALE).save() } }
+            }
+
+            val client = orThrow { TestPostgres.db.transaction { context(ctx) { clients.activeById(id) } } }
+            assertEquals("Новое имя", client.name)
+            assertEquals(listOf("Договор"), client.docs.map { it.name })
+        }
+
+    @Test
+    fun `прикрепление документов из одного старого снимка сохраняет оба документа`() =
+        runTest {
+            val id = ClientId.new()
+            val upload1 = insertUpload()
+            val upload2 = insertUpload()
+            val stale =
+                orThrow {
+                    TestPostgres.db.transaction { context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) } }
+                }
+
+            orThrow { TestPostgres.db.transaction { context(ctx) { stale.attachDoc(clientDoc(upload1, "Первый")).save() } } }
+            orThrow { TestPostgres.db.transaction { context(ctx) { stale.attachDoc(clientDoc(upload2, "Второй")).save() } } }
+
+            assertEquals(2L, countDocsInDb(id))
+        }
+
+    @Test
+    fun `прикрепление документа и правка профиля из старого снимка отклоняются для архивного клиента`() =
+        runTest {
+            val id = ClientId.new()
+            val uploadId = insertUpload()
+            val stale =
+                orThrow {
+                    TestPostgres.db.transaction { context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) } }
+                }
+            orThrow { TestPostgres.db.transaction { context(ctx) { clients.archive(id) } } }
+
+            val attach =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { stale.attachDoc(clientDoc(uploadId, "Договор")).save() } }
+                }
+            val edit =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { stale.withNew(testName("Новое имя"), null, null, Gender.MALE).save() } }
+                }
+
+            assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(attach).value.code)
+            assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(edit).value.code)
+            assertEquals(0L, countDocsInDb(id))
+        }
+
     // ─── archive() / restore() ─────────────────────────────────────────────────
 
     @Test

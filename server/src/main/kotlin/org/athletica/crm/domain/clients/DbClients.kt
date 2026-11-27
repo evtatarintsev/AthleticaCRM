@@ -128,6 +128,7 @@ class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldD
             customFields = validatedFields,
             orgId = ctx.orgId,
             definitions = definitions,
+            loadedDocIds = emptySet(),
         )
     }
 
@@ -150,7 +151,7 @@ class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldD
         if (archived) {
             DbArchivedClient(id, name, createdAt, avatarId, birthday, gender, groups, docs, leadSourceId, customFields)
         } else {
-            DbActiveClient(id, name, createdAt, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId, definitions)
+            DbActiveClient(id, name, createdAt, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId, definitions, docs.map { it.id }.toSet())
         }
 
     private fun io.r2dbc.spi.Row.toScalarClient(): ScalarClient =

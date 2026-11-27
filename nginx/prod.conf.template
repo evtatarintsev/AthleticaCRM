@@ -65,6 +65,11 @@ server {
         return 302 https://app.${DOMAIN}$request_uri;
     }
 
+    # Кабинет клиента показывает вход в корне своего хоста
+    location = /cabinet {
+        return 302 https://clients.${DOMAIN}/;
+    }
+
     location / {
         resolver           127.0.0.11 valid=10s;
         set $upstream      http://frontend:8081;

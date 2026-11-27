@@ -1312,6 +1312,7 @@ export const en: Messages<typeof ru> = {
   "sessionDetail.attendance.PRESENT": "Present",
   "sessionDetail.attendance.ABSENT": "Absent",
   "sessionDetail.attendance.unmarked": "Not marked",
+  "sessionDetail.absenceNotice": "Notified from the client cabinet at {time} · {phone}",
   "sessionDetail.attendance.labelRequired": "Choose a label to mark as absent",
   "sessionDetail.attendance.groupAria": "Attendance: {name}",
   "sessionDetail.attendance.labelsAria": "Labels: {name}",

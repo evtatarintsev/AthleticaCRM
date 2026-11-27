@@ -54,9 +54,11 @@ import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientapp.AuditClientAppSettings
+import org.athletica.crm.domain.clientapp.ClientAppAbsenceNotices
 import org.athletica.crm.domain.clientapp.ClientAppAccesses
 import org.athletica.crm.domain.clientapp.ClientAppConfig
 import org.athletica.crm.domain.clientapp.ClientAppSettings
+import org.athletica.crm.domain.clientapp.DbClientAppAbsenceNotices
 import org.athletica.crm.domain.clientapp.DbClientAppAccesses
 import org.athletica.crm.domain.clientapp.DbClientAppSettings
 import org.athletica.crm.domain.clientapp.auth.ClientAppAccounts
@@ -311,6 +313,7 @@ data class Di(
     val inboundStores = InboundStores(channelBindings, inboundReceipts, conversations, channelChats, clientContacts)
     val deliveries = DbDeliveries()
     val clientAppAccesses: ClientAppAccesses = DbClientAppAccesses()
+    val clientAppAbsenceNotices: ClientAppAbsenceNotices = DbClientAppAbsenceNotices()
     val clientAppSessions: ClientAppSessions = DbClientAppSessions()
     val clientAppCodes: ClientAppCodes = DbClientAppCodes()
     val clientAppAccounts: ClientAppAccounts = DbClientAppAccounts()

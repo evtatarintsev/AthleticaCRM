@@ -52,6 +52,7 @@ const journal = (status: "SCHEDULED" | "COMPLETED", hasStarted: boolean, presenc
         kind: "REGULAR",
         presence,
         labels: [],
+        absenceNotice: null,
       },
     ],
   });

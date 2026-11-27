@@ -3,6 +3,24 @@
 
 import { z } from "zod";
 
+export const ClientIdSchema = z.uuid().brand<"ClientId">();
+export type ClientId = z.output<typeof ClientIdSchema>;
+
+export const OrgIdSchema = z.uuid().brand<"OrgId">();
+export type OrgId = z.output<typeof OrgIdSchema>;
+
+export const SessionIdSchema = z.uuid().brand<"SessionId">();
+export type SessionId = z.output<typeof SessionIdSchema>;
+
+export const ClientAppAbsenceNoticeRequestSchema = z
+  .object({
+    orgId: OrgIdSchema,
+    clientId: ClientIdSchema,
+    sessionId: SessionIdSchema,
+  })
+  .readonly();
+export type ClientAppAbsenceNoticeRequest = z.output<typeof ClientAppAbsenceNoticeRequestSchema>;
+
 export const LocalDateSchema = z.iso.date().brand<"LocalDate">();
 export type LocalDate = z.output<typeof LocalDateSchema>;
 
@@ -50,9 +68,6 @@ export const ClientAppHomeResponseSchema = z
   .readonly();
 export type ClientAppHomeResponse = z.output<typeof ClientAppHomeResponseSchema>;
 
-export const OrgIdSchema = z.uuid().brand<"OrgId">();
-export type OrgId = z.output<typeof OrgIdSchema>;
-
 export const ClientAppInvitationRequestSchema = z
   .object({
     orgId: OrgIdSchema,
@@ -88,9 +103,6 @@ export const ClientAppLoginRequestSchema = z
   })
   .readonly();
 export type ClientAppLoginRequest = z.output<typeof ClientAppLoginRequestSchema>;
-
-export const SessionIdSchema = z.uuid().brand<"SessionId">();
-export type SessionId = z.output<typeof SessionIdSchema>;
 
 export const ClientAppMembershipDebitSchemaSchema = z
   .object({
@@ -144,8 +156,16 @@ export const ClientAppMembershipsResponseSchema = z
   .readonly();
 export type ClientAppMembershipsResponse = z.output<typeof ClientAppMembershipsResponseSchema>;
 
-export const ClientIdSchema = z.uuid().brand<"ClientId">();
-export type ClientId = z.output<typeof ClientIdSchema>;
+export const LocalTimeSchema = z.iso.time().brand<"LocalTime">();
+export type LocalTime = z.output<typeof LocalTimeSchema>;
+
+export const ClientAppMovedFromSchemaSchema = z
+  .object({
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+  })
+  .readonly();
+export type ClientAppMovedFromSchema = z.output<typeof ClientAppMovedFromSchemaSchema>;
 
 export const ClientAppProfileRequestSchema = z
   .object({
@@ -189,6 +209,45 @@ export const ClientAppRequestCodeResponseSchema = z
   })
   .readonly();
 export type ClientAppRequestCodeResponse = z.output<typeof ClientAppRequestCodeResponseSchema>;
+
+export const ClientAppScheduleRequestSchema = z
+  .object({
+    orgId: OrgIdSchema,
+    clientId: ClientIdSchema,
+    weekOf: LocalDateSchema.nullable().optional(),
+  })
+  .readonly();
+export type ClientAppScheduleRequest = z.output<typeof ClientAppScheduleRequestSchema>;
+
+export const SessionStatusSchema = z.enum(["SCHEDULED", "COMPLETED", "CANCELLED"]);
+export type SessionStatus = z.output<typeof SessionStatusSchema>;
+
+export const ClientAppScheduleSessionSchemaSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+    endTime: LocalTimeSchema,
+    groupName: z.string().nullable(),
+    hallName: z.string(),
+    coaches: z.array(z.string()).readonly(),
+    status: SessionStatusSchema,
+    movedFrom: ClientAppMovedFromSchemaSchema.nullable(),
+    hasStarted: z.boolean(),
+    absenceNoticeAt: InstantSchema.nullable(),
+  })
+  .readonly();
+export type ClientAppScheduleSessionSchema = z.output<typeof ClientAppScheduleSessionSchemaSchema>;
+
+export const ClientAppScheduleResponseSchema = z
+  .object({
+    weekStart: LocalDateSchema,
+    today: LocalDateSchema,
+    sessions: z.array(ClientAppScheduleSessionSchemaSchema).readonly(),
+    next: ClientAppScheduleSessionSchemaSchema.nullable(),
+  })
+  .readonly();
+export type ClientAppScheduleResponse = z.output<typeof ClientAppScheduleResponseSchema>;
 
 export const ClientAppSessionIdSchema = z.uuid().brand<"ClientAppSessionId">();
 export type ClientAppSessionId = z.output<typeof ClientAppSessionIdSchema>;
@@ -237,6 +296,20 @@ export type ErrorResponse = z.output<typeof ErrorResponseSchema>;
 
 /** Все эндпоинты API: путь без `/api/` → метод, формат запроса и ответа. */
 export const endpoints = {
+  "client-app/absence-notices/cancel": {
+    method: "POST",
+    in: "body",
+    request: ClientAppAbsenceNoticeRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "client-app/absence-notices/create": {
+    method: "POST",
+    in: "body",
+    request: ClientAppAbsenceNoticeRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
   "client-app/account/delete": {
     method: "POST",
     in: "none",
@@ -320,6 +393,13 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: ClientAppProfilesResponseSchema,
+  },
+  "client-app/schedule": {
+    method: "GET",
+    in: "query",
+    request: ClientAppScheduleRequestSchema,
+    out: "json",
+    response: ClientAppScheduleResponseSchema,
   },
   "client-app/sessions": {
     method: "GET",

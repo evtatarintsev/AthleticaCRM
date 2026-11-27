@@ -65,7 +65,11 @@ class DbSessionJournalView : SessionJournalView {
                          WHERE se.session_id = s.id) AS coaches,
                        (SELECT COALESCE(jsonb_agg(jsonb_build_object(
                                    'clientId', c.id, 'name', c.name, 'kind', upper(r.kind),
-                                   'presence', upper(r.presence), 'labels', ${AttendanceSql.labelsJson("r")}
+                                   'presence', upper(r.presence), 'labels', ${AttendanceSql.labelsJson("r")},
+                                   'absenceNotice', (SELECT jsonb_build_object('phone', ca.phone_digits, 'createdAt', n.created_at)
+                                                       FROM client_app_absence_notices n
+                                                       JOIN client_app_access ca ON ca.id = n.access_id
+                                                      WHERE n.session_id = s.id AND n.client_id = r.client_id)
                                ) ORDER BY c.name, c.id), '[]'::jsonb)
                           FROM roster r
                           JOIN clients c ON c.id = r.client_id AND c.org_id = s.org_id) AS participants

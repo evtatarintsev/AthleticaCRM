@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.sessions.SessionStatus
+import kotlin.time.Instant
 
 /** Запрос журнала посещаемости занятия. */
 @Serializable
@@ -58,6 +59,15 @@ data class JournalParticipantSchema(
     val presence: AttendancePresence?,
     /** Метки отметки, в порядке справочника; включая архивные. */
     val labels: List<AttendanceLabelSchema>,
+    /** Предупреждение «Не придём» из кабинета клиента; `null` — не предупреждали. */
+    val absenceNotice: JournalAbsenceNoticeSchema?,
+)
+
+/** Предупреждение «Не придём» из кабинета клиента: номер [phone] (только цифры) и момент [createdAt]. */
+@Serializable
+data class JournalAbsenceNoticeSchema(
+    val phone: String,
+    val createdAt: Instant,
 )
 
 /** Запрос на установку отметки участнику занятия. */

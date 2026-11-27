@@ -1396,6 +1396,7 @@ export const ru = {
   "sessionDetail.attendance.PRESENT": "Пришёл",
   "sessionDetail.attendance.ABSENT": "Не пришёл",
   "sessionDetail.attendance.unmarked": "Не отмечен",
+  "sessionDetail.absenceNotice": "Предупредили из кабинета в {time} · {phone}",
   "sessionDetail.attendance.labelRequired": "Для отметки «не пришёл» выберите метку",
   "sessionDetail.attendance.groupAria": "Отметка: {name}",
   "sessionDetail.attendance.labelsAria": "Метки: {name}",

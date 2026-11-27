@@ -233,7 +233,7 @@ fun Application.configureServer() {
                 context(di.clientAppJwtConfig, di.clientAppConfig) {
                     clientAppAuthRoutes(di.database, di.views, di.clientAppSignIn, di.clientAppAccountDeletion, di.verificationCodeDelivery, di.backgroundScope)
                 }
-                clientAppRoutes(di.database, di.views, di.clientAppConnections, di.clientAppAccesses)
+                clientAppRoutes(di.database, di.views, di.clientAppConnections, di.clientAppAccesses, di.clientAppAbsenceNotices)
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
                         assistantRoutes(di.assistant)

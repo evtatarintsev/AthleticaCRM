@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import type { ApiClientOptions } from "./api/client";
@@ -31,12 +31,12 @@ function profile(clientId: string, clientName: string) {
 
 /** Фейковый сервер: маршрут `client-app/...` → обработчик; неизвестный маршрут — 404. */
 function server(routes: Readonly<Record<string, Handler>>) {
-  const calls: { path: string; body: unknown }[] = [];
+  const calls: { path: string; body: unknown; query: URLSearchParams }[] = [];
   const fetch = vi.fn<ApiClientOptions["fetch"]>((input, init) => {
     const url = new URL(input, "https://clients.example.com");
     const path = url.pathname.replace("/api/", "");
     const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
-    calls.push({ path, body });
+    calls.push({ path, body, query: url.searchParams });
     const handler = routes[path];
     return Promise.resolve(
       handler === undefined ? new Response(null, { status: 404 }) : handler(body, url.searchParams),
@@ -161,6 +161,7 @@ describe("вход", () => {
       "client-app/home": home({ [IVAN]: "Иван Петров" }),
       "client-app/balance": () => json(BALANCE),
       "client-app/memberships": () => json({ memberships: [] }),
+      "client-app/schedule": () => json(week([])),
     });
     renderApp(fetch);
 
@@ -260,6 +261,7 @@ describe("приглашения", () => {
       "client-app/home": home({ [IVAN]: "Иван Петров" }),
       "client-app/balance": () => json(BALANCE),
       "client-app/memberships": () => json({ memberships: [] }),
+      "client-app/schedule": () => json(week([])),
     });
     renderApp(fetch);
 
@@ -307,6 +309,7 @@ describe("профили", () => {
       "client-app/home": home({ [IVAN]: "Иван", [MARIA]: "Мария" }),
       "client-app/balance": () => json(BALANCE),
       "client-app/memberships": () => json({ memberships: [] }),
+      "client-app/schedule": () => json(week([])),
     };
     renderApp(server(routes).fetch);
 
@@ -346,6 +349,7 @@ describe("аккаунт", () => {
       "client-app/home": home({ [IVAN]: "Иван" }),
       "client-app/balance": () => json(BALANCE),
       "client-app/memberships": () => json({ memberships: [] }),
+      "client-app/schedule": () => json(week([])),
       "client-app/sessions": () => json({ sessions: sessions() }),
       ...routes,
     });
@@ -433,6 +437,7 @@ describe("баланс", () => {
       "client-app/home": home({ [IVAN]: "Иван" }),
       "client-app/balance": () => json(BALANCE),
       "client-app/memberships": () => json({ memberships: [] }),
+      "client-app/schedule": () => json(week([])),
     });
     renderApp(fetch);
     expect(await screen.findByText("500,00 ₽")).toBeInTheDocument();
@@ -453,6 +458,7 @@ describe("баланс", () => {
       "client-app/balance": () =>
         json({ balance: { minorUnits: 0, currency: "RUB" }, unpaidSessions: 0, entries: [] }),
       "client-app/memberships": () => json({ memberships: [] }),
+      "client-app/schedule": () => json(week([])),
     });
     renderApp(fetch);
     expect(await screen.findByText("Это кабинет клиента Иван")).toBeInTheDocument();
@@ -490,6 +496,7 @@ function withMemberships(memberships: unknown[]) {
     "client-app/home": home({ [IVAN]: "Иван" }),
     "client-app/balance": () => json(BALANCE),
     "client-app/memberships": () => json({ memberships }),
+    "client-app/schedule": () => json(week([])),
   });
 }
 
@@ -569,5 +576,116 @@ describe("абонементы", () => {
     renderApp(fetch);
     expect(await screen.findByText("Начнёт действовать 1 декабря")).toBeInTheDocument();
     expect(screen.getAllByText("Безлимит")).toHaveLength(2);
+  });
+});
+
+/** Неделя с понедельника 7 января 2030 с занятиями [sessions] и ближайшим занятием [next]. */
+function week(sessions: unknown[], next: unknown = null) {
+  return { weekStart: "2030-01-07", today: "2030-01-07", sessions, next };
+}
+
+/** Занятие [id] 7 января 2030 в 18:00 группы «Дети 7–9» с полями [extra]. */
+function lesson(id: string, extra: Record<string, unknown> = {}) {
+  return {
+    sessionId: id,
+    date: "2030-01-07",
+    startTime: "18:00:00",
+    endTime: "19:00:00",
+    groupName: "Дети 7–9",
+    hallName: "Зал А",
+    coaches: ["Сергей"],
+    status: "SCHEDULED",
+    movedFrom: null,
+    hasStarted: false,
+    absenceNoticeAt: null,
+    ...extra,
+  };
+}
+
+describe("расписание", () => {
+  const LESSON = "0197a3c2-0000-7000-8000-000000000031";
+  const MOVED = "0197a3c2-0000-7000-8000-000000000032";
+  const CANCELLED = "0197a3c2-0000-7000-8000-000000000033";
+
+  /** Сервер с профилем Ивана, у которого «Не придём» по [LESSON] переключает предупреждение. */
+  function withSchedule() {
+    let notified = false;
+    const schedule = () => {
+      const first = lesson(LESSON, { absenceNoticeAt: notified ? "2030-01-07T12:00:00Z" : null });
+      return json(
+        week(
+          [
+            first,
+            lesson(MOVED, {
+              date: "2030-01-08",
+              startTime: "11:00:00",
+              endTime: "12:00:00",
+              movedFrom: { date: "2030-01-08", startTime: "10:00:00" },
+            }),
+            lesson(CANCELLED, { date: "2030-01-09", startTime: "17:00:00", status: "CANCELLED" }),
+          ],
+          first,
+        ),
+      );
+    };
+    return server({
+      "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
+      "client-app/home": home({ [IVAN]: "Иван" }),
+      "client-app/balance": () => json(BALANCE),
+      "client-app/memberships": () => json({ memberships: [] }),
+      "client-app/schedule": schedule,
+      "client-app/absence-notices/create": () => {
+        notified = true;
+        return ok();
+      },
+      "client-app/absence-notices/cancel": () => {
+        notified = false;
+        return ok();
+      },
+    });
+  }
+
+  it("на главной ближайшее занятие; в расписании перенос, отмена и «Не придём» с отменой", async () => {
+    const { fetch, calls } = withSchedule();
+    renderApp(fetch);
+    expect(await screen.findByText("Ближайшее занятие")).toBeInTheDocument();
+    expect(screen.getByText("понедельник, 7 января, 18:00")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Расписание" }));
+    expect(await screen.findByText("Перенесено с 10:00")).toBeInTheDocument();
+    expect(screen.getByText("11:00–12:00")).toBeInTheDocument();
+    expect(screen.getByText("Отменено")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Не придём" })).toHaveLength(2);
+
+    fireEvent.click(
+      within(screen.getByRole("listitem", { name: "18:00" })).getByRole("button", {
+        name: "Не придём",
+      }),
+    );
+    expect(await screen.findByText("Вы предупредили, что не придёте")).toBeInTheDocument();
+    expect(calls.find((it) => it.path === "client-app/absence-notices/create")?.body).toEqual({
+      orgId: ORG,
+      clientId: IVAN,
+      sessionId: LESSON,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Отменить предупреждение" }));
+    await waitFor(() => {
+      expect(screen.queryByText("Вы предупредили, что не придёте")).not.toBeInTheDocument();
+    });
+    expect(calls.some((it) => it.path === "client-app/absence-notices/cancel")).toBe(true);
+  });
+
+  it("переход на следующую неделю запрашивает её по дате", async () => {
+    const { fetch, calls } = withSchedule();
+    renderApp(fetch);
+    fireEvent.click(await screen.findByRole("button", { name: "Расписание" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Следующая неделя" }));
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (it) => it.path === "client-app/schedule" && it.query.get("weekOf") === "2030-01-14",
+        ),
+      ).toBe(true);
+    });
   });
 });

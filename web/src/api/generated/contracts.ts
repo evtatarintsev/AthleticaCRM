@@ -2874,6 +2874,14 @@ export const IssueMembershipRequestSchema = z
   .readonly();
 export type IssueMembershipRequest = z.output<typeof IssueMembershipRequestSchema>;
 
+export const JournalAbsenceNoticeSchemaSchema = z
+  .object({
+    phone: z.string(),
+    createdAt: InstantSchema,
+  })
+  .readonly();
+export type JournalAbsenceNoticeSchema = z.output<typeof JournalAbsenceNoticeSchemaSchema>;
+
 export const JournalParticipantRequestSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -2892,6 +2900,7 @@ export const JournalParticipantSchemaSchema = z
     kind: ParticipationKindSchema,
     presence: AttendancePresenceSchema.nullable(),
     labels: z.array(AttendanceLabelSchemaSchema).readonly(),
+    absenceNotice: JournalAbsenceNoticeSchemaSchema.nullable(),
   })
   .readonly();
 export type JournalParticipantSchema = z.output<typeof JournalParticipantSchemaSchema>;

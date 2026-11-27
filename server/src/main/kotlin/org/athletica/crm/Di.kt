@@ -81,6 +81,7 @@ import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.conversations.ConversationReadStates
 import org.athletica.crm.domain.conversations.DbConversationReadStates
 import org.athletica.crm.domain.conversations.DbConversations
+import org.athletica.crm.domain.customfields.AuditCustomFieldDefinitions
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.discipline.AuditDisciplines
@@ -388,7 +389,7 @@ fun Application.di(): Di {
         clientPayments = ClientPayments(audit = audit),
         clients = AuditClients(DbClients(), audit),
         branches = AuditBranches(DbBranches(), audit),
-        customFieldDefinitions = DbCustomFieldDefinitions(),
+        customFieldDefinitions = AuditCustomFieldDefinitions(DbCustomFieldDefinitions(), audit),
         userDisplaySettings = DbUserDisplaySettings(),
         yookassaConfig = ykConfig,
         payments = DbPayments(),

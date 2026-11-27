@@ -10,19 +10,25 @@ import kotlinx.serialization.json.jsonObject
 import org.athletica.crm.api.appJson
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.entityids.toCustomFieldDefinitionId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
+import org.athletica.crm.storage.asInt
 import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 
 /** R2DBC-реализация [CustomFieldDefinitions]. */
 class DbCustomFieldDefinitions : CustomFieldDefinitions {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun all(entityType: String): List<CustomFieldDefinition> =
+    override suspend fun all(entityType: String): List<CustomFieldDefinition> = stored(entityType).map { it.definition }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun stored(entityType: String): List<StoredCustomFieldDefinition> =
         tr.sql(
             """
-            SELECT field_key, label, field_type::text, config::text,
+            SELECT id, display_order, field_key, label, field_type::text, config::text,
                    is_required, is_searchable, is_sortable
             FROM custom_field_definitions
             WHERE org_id = :orgId AND entity_type = :entityType
@@ -32,14 +38,19 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
             .bind("orgId", ctx.orgId)
             .bind("entityType", entityType)
             .list { row ->
-                customFieldDefinition(
-                    fieldType = row.asString("field_type"),
-                    configJson = row.asString("config"),
-                    fieldKey = row.asString("field_key"),
-                    label = row.asString("label"),
-                    isRequired = row.asBoolean("is_required"),
-                    isSearchable = row.asBoolean("is_searchable"),
-                    isSortable = row.asBoolean("is_sortable"),
+                StoredCustomFieldDefinition(
+                    id = row.asUuid("id").toCustomFieldDefinitionId(),
+                    position = row.asInt("display_order"),
+                    definition =
+                        customFieldDefinition(
+                            fieldType = row.asString("field_type"),
+                            configJson = row.asString("config"),
+                            fieldKey = row.asString("field_key"),
+                            label = row.asString("label"),
+                            isRequired = row.asBoolean("is_required"),
+                            isSearchable = row.asBoolean("is_searchable"),
+                            isSortable = row.asBoolean("is_sortable"),
+                        ),
                 )
             }
 
@@ -58,11 +69,19 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
                 CommonDomainError("CUSTOM_FIELD_INVALID_DEFINITION", "Некорректное определение поля ${def.fieldKey}")
             }
         }
+        val keys = definitions.map { it.fieldKey.value }
+        ensure(keys.size == keys.toSet().size) {
+            CommonDomainError("CUSTOM_FIELD_DUPLICATE_KEY", "Ключи полей повторяются")
+        }
         tr.sql(
-            "DELETE FROM custom_field_definitions WHERE org_id = :orgId AND entity_type = :entityType",
+            """
+            DELETE FROM custom_field_definitions
+            WHERE org_id = :orgId AND entity_type = :entityType AND field_key <> ALL(:keys)
+            """.trimIndent(),
         )
             .bind("orgId", ctx.orgId)
             .bind("entityType", entityType)
+            .bind("keys", keys.toTypedArray())
             .execute()
 
         definitions.forEachIndexed { index, def ->
@@ -74,6 +93,14 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
                 VALUES
                     (:orgId, :entityType, :fieldKey, :label, :fieldType::custom_field_type, :config::jsonb,
                      :isRequired, :isSearchable, :isSortable, :displayOrder)
+                ON CONFLICT (org_id, entity_type, field_key) DO UPDATE SET
+                    label = EXCLUDED.label,
+                    field_type = EXCLUDED.field_type,
+                    config = EXCLUDED.config,
+                    is_required = EXCLUDED.is_required,
+                    is_searchable = EXCLUDED.is_searchable,
+                    is_sortable = EXCLUDED.is_sortable,
+                    display_order = EXCLUDED.display_order
                 """.trimIndent(),
             )
                 .bind("orgId", ctx.orgId)

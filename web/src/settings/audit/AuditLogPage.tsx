@@ -291,6 +291,16 @@ function AuditSubjectLink({ subject }: { readonly subject: AuditLogSubject }) {
           {subject.title}
         </Link>
       );
+    case "custom_field":
+      return (
+        <Link
+          to="/settings"
+          search={{ panel: "client-additional-attributes" }}
+          className="hover:underline"
+        >
+          {subject.title}
+        </Link>
+      );
     case "subscription_tariff":
       return (
         <Link to="/settings" search={{ panel: "tariffs" }} className="hover:underline">

@@ -68,7 +68,15 @@ const participant = (
   name: string,
   kind: "REGULAR" | "ONE_TIME" = "REGULAR",
   presence: "PRESENT" | "ABSENT" | null = null,
-) => ({ clientId: `0199a0b2-0000-7000-8000-40000000000${id}`, name, kind, presence, labels: [] });
+  absenceNotice: { phone: string; createdAt: string } | null = null,
+) => ({
+  clientId: `0199a0b2-0000-7000-8000-40000000000${id}`,
+  name,
+  kind,
+  presence,
+  labels: [],
+  absenceNotice,
+});
 
 const client = (id: string, name: string) =>
   ClientListItemSchema.parse({
@@ -206,6 +214,7 @@ function journalServer(initial: SessionJournalResponse, failMark = false) {
             kind: "ONE_TIME",
             presence: null,
             labels: [],
+            absenceNotice: null,
           },
         ],
       };
@@ -404,6 +413,21 @@ describe("карточка занятия", () => {
     expect(within(row("Аня")).getByText(ru["sessionDetail.participant.REGULAR"])).toBeVisible();
     expect(within(row("Гость")).getByText(ru["sessionDetail.participant.ONE_TIME"])).toBeVisible();
     expect(within(row("Аня")).getByText(ru["sessionDetail.attendance.unmarked"])).toBeVisible();
+  });
+
+  it("показывает предупреждение «Не придём» из кабинета с датой, временем и номером, отметку не ставит", async () => {
+    const notice = { phone: "79031234567", createdAt: "2030-01-07T15:00:00Z" };
+    const server = journalServer(
+      journalOf([participant("1", "Аня", "REGULAR", null, notice), participant("2", "Борис")]),
+    );
+    openApp(`/sessions/${sessionId}`, server.fetch);
+
+    expect(await screen.findByText("Юниоры У8")).toBeVisible();
+    expect(
+      within(row("Аня")).getByText(/^Предупредили из кабинета 7 янв\.?,? 15:00 · \+79031234567$/),
+    ).toBeVisible();
+    expect(within(row("Аня")).getByText(ru["sessionDetail.attendance.unmarked"])).toBeVisible();
+    expect(within(row("Борис")).queryByText(/Предупредили из кабинета/)).toBeNull();
   });
 
   it("сохраняет отметку на сервере: после перезагрузки участник по-прежнему отмечен", async () => {

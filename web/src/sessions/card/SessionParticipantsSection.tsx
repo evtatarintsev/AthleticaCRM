@@ -5,6 +5,7 @@ import type { ApiClient } from "@/api/client";
 import type {
   AttendanceLabelSchema,
   ClientId,
+  JournalAbsenceNoticeSchema,
   JournalParticipantSchema,
   ParticipantDebitStateSchema,
   ParticipationKind,
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import type { PlainMessageKey } from "@/i18n/context";
 import { useI18n } from "@/i18n/context";
 import { isPlainClick } from "@/lib/plainClick";
+import { useSession } from "@/query/session";
 import { Avatar } from "@/ui/Avatar";
 import type { MarkDraft } from "../attendance";
 import { ParticipantAttendance } from "../ParticipantAttendance";
@@ -23,7 +25,8 @@ import { ParticipantClientSheet, type ParticipantRef } from "./ParticipantClient
  * вид участия, отметка. Клик по имени открывает упрощённую карточку клиента в боковой панели,
  * не уводя с занятия; ctrl/cmd-клик и средняя кнопка — полную карточку по ссылке. В заголовке — сколько отмечено,
  * массовая отметка оставшихся и добавление разового участника.
- * Под именем — абонемент, с которого спишется или списано занятие, или «Нет абонемента».
+ * Под именем — абонемент, с которого спишется или списано занятие, или «Нет абонемента», и предупреждение
+ * «Не придём» из кабинета клиента с датой и временем по часовому поясу организации и номером.
  * Аватаров в журнале пока нет — показываются инициалы.
  */
 export function SessionParticipantsSection({
@@ -57,6 +60,7 @@ export function SessionParticipantsSection({
   readonly onMarkRemainingAbsent: () => void;
 }) {
   const { t } = useI18n();
+  const timeZone = useSession(api).orgInfo.timezone;
   const total = participants.length;
   const [opened, setOpened] = useState<ParticipantRef | null>(null);
 
@@ -135,6 +139,9 @@ export function SessionParticipantsSection({
                   </div>
                   <ParticipationBadge kind={participant.kind} />
                   <ParticipantDebit state={debits?.get(participant.clientId)} />
+                  {participant.absenceNotice !== null && (
+                    <AbsenceNotice notice={participant.absenceNotice} timeZone={timeZone} />
+                  )}
                 </div>
               </div>
               <ParticipantAttendance
@@ -228,5 +235,32 @@ function DebitMembership({
         : t("sessionDetail.debit.remaining", { count: state.membership.sessionsRemaining })}
       {state.type === "will_debit" && state.activates && ` · ${t("sessionDetail.debit.activates")}`}
     </span>
+  );
+}
+
+/**
+ * Предупреждение «Не придём» [notice] из кабинета: дата и время в часовом поясе организации [timeZone] и номер.
+ * Дата нужна всегда — предупреждают и за несколько дней до занятия.
+ */
+function AbsenceNotice({
+  notice,
+  timeZone,
+}: {
+  readonly notice: JournalAbsenceNoticeSchema;
+  readonly timeZone: string;
+}) {
+  const { t, locale } = useI18n();
+  const time = new Intl.DateTimeFormat(locale, {
+    timeZone,
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(notice.createdAt));
+  return (
+    <p className="text-xs text-amber-700 dark:text-amber-400">
+      {t("sessionDetail.absenceNotice", { time, phone: `+${notice.phone}` })}
+    </p>
   );
 }

@@ -50,6 +50,17 @@ object ClientProfileContexts {
     """
 
     /**
+     * Клиент `:clientId` числится на занятии под псевдонимом `s`: есть строка журнала (в том числе разовое
+     * участие) или запись в группу занятия активна на его дату. Общий для расписания и «Не придём».
+     */
+    const val IN_SESSION = """
+        (EXISTS (SELECT 1 FROM session_attendance isa WHERE isa.session_id = s.id AND isa.client_id = :clientId)
+         OR EXISTS (SELECT 1 FROM enrollments ise
+                    WHERE ise.group_id = s.group_id AND ise.client_id = :clientId
+                      AND ise.enrolled_at::date <= s.date AND (ise.left_at IS NULL OR ise.left_at::date >= s.date)))
+    """
+
+    /**
      * Контекст профиля клиента [clientId] организации [orgId] для аккаунта [account]. Нет подключённого
      * доступа — `CLIENT_NOT_FOUND`, одинаково для чужого и несуществующего клиента.
      */

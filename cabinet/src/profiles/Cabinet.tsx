@@ -13,12 +13,13 @@ import { Account } from "../account/Account";
 import { Balance, BalanceBlock } from "../balance/Balance";
 import { useI18n } from "../i18n/context";
 import { MembershipBlock, Memberships } from "../memberships/Memberships";
+import { NextSessionBlock, Schedule } from "../schedule/Schedule";
 import { Failure } from "../ui/Failure";
 import { useLoaded } from "../ui/useLoaded";
 import { selectedProfile, storedProfile, storeProfile, type ProfileKey } from "./selectedProfile";
 
-/** Экран вошедшего человека: главная выбранного профиля, переключатель или приглашения. */
-type View = "home" | "switcher" | "invitations";
+/** Экран вошедшего человека: главная выбранного профиля, расписание, переключатель или приглашения. */
+type View = "home" | "schedule" | "switcher" | "invitations";
 
 /**
  * Кабинет вошедшего человека через [api]: профили и экран «Аккаунт» с сеансами, выходом и удалением
@@ -120,6 +121,17 @@ function Profiles({ api }: { api: CabinetApi }) {
       />
     );
   }
+  if (view === "schedule") {
+    return (
+      <Schedule
+        api={api}
+        profile={profile}
+        onBack={() => {
+          setView("home");
+        }}
+      />
+    );
+  }
   if (view === "switcher") {
     return (
       <Switcher
@@ -160,25 +172,30 @@ function Profiles({ api }: { api: CabinetApi }) {
         profile={profile}
         onBalance={setBalance}
         onMemberships={setMemberships}
+        onSchedule={() => {
+          setView("schedule");
+        }}
       />
     </>
   );
 }
 
 /**
- * Главная профиля [profile]: приветствие по имени клиента, текущий абонемент и баланс;
- * [onBalance] и [onMemberships] — открыть уже загруженные баланс и абонементы.
+ * Главная профиля [profile]: приветствие по имени клиента, ближайшее занятие, текущий абонемент и баланс;
+ * [onBalance] и [onMemberships] — открыть уже загруженные баланс и абонементы, [onSchedule] — расписание.
  */
 function Home({
   api,
   profile,
   onBalance,
   onMemberships,
+  onSchedule,
 }: {
   api: CabinetApi;
   profile: ClientAppProfileSchema;
   onBalance: (balance: ClientAppBalanceResponse) => void;
   onMemberships: (memberships: ClientAppMembershipsResponse) => void;
+  onSchedule: () => void;
 }) {
   const { t } = useI18n();
   const { orgId, clientId } = profile;
@@ -197,6 +214,7 @@ function Home({
             <h1>{t("home.greeting")}</h1>
             <p>{t("home.cabinetOf", { name: state.value.clientName })}</p>
           </section>
+          <NextSessionBlock api={api} profile={profile} onOpen={onSchedule} />
           <MembershipBlock api={api} profile={profile} onOpen={onMemberships} />
           <BalanceBlock api={api} profile={profile} onOpen={onBalance} />
         </>

@@ -1083,4 +1083,10 @@ object Messages {
         override val ru = "Действие недоступно для этого номера — обновите страницу"
         override val en = "This action is not available for the number — refresh the page"
     }
+
+    /** «Не придём» недоступно: занятие отменено, проведено или уже началось. */
+    object ClientAppAbsenceNoticeClosed : LocalizationKey {
+        override val ru = "Предупредить уже нельзя: занятие началось, отменено или проведено"
+        override val en = "It is too late to notify: the session has started, was cancelled or completed"
+    }
 }

@@ -28,7 +28,7 @@ class ClientApiTest {
     private val profile = ProfileKey(OrgId.new(), ClientId.new())
 
     @Test
-    fun `истёкший access обновляется одним refresh, запрос повторяется, профиль сохраняется`() =
+    fun `истёкший access обновляется одним refresh — запрос повторяется — профиль сохраняется`() =
         runTest {
             val store = MemorySessionStore(Session("a1", "r1", profile))
             server.on("GET client-app/sessions") { if (it.auth == "Bearer a2") ok(ClientAppSessionsResponse(emptyList())) else respond("", HttpStatusCode.Unauthorized) }
@@ -59,7 +59,7 @@ class ClientApiTest {
         }
 
     @Test
-    fun `бизнес-ошибка сервера — значение с кодом и сообщением, сбой сети — Unavailable`() =
+    fun `бизнес-ошибка сервера — значение с кодом и сообщением — сбой сети — Unavailable`() =
         runTest {
             val store = MemorySessionStore(Session("a1", "r1"))
             server.on("POST client-app/connect") { businessError("CLIENT_NOT_FOUND", "Клиент не найден") }
